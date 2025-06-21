@@ -1,43 +1,22 @@
-int x, y;
-float z;
+int x,y,z; float a;
 
-int factorial(int n) {
-    if (n <= 1) {
-        return 1;
-    } else {
-        return n * factorial(n - 1);
-    }
+void foo();
+
+int var(int a, int b){
+	return a+b;
 }
 
-void printArray(int arr[], int size) {
-    int i;
-    for (i = 0; i < size; i++) {
-        x = arr[i];
-    }
+void foo(){
+	x=2;
+	y=x-5;
 }
 
-int main() {
-    int a, b[10];
-    float c;
-    
-    a = 5;
-    b[0] = 10;
-    c = 3.14;
-    
-    x = factorial(a);
-    y = x + b[0];
-    
-    if (x > 0) {
-        z = c * 2.0;
-    } else {
-        z = 0.0;
-    }
-    
-    while (a > 0) {
-        a = a - 1;
-    }
-    
-    printArray(b, 5);
-    
-    return 0;
+int main(){
+	int a[2],c,i,j ; float d;
+	a[0];
+	a[1]=5;
+	i= a[0]+a[1];
+	j= 2*3+(5%3 < 4 && 8) || 2 ;
+	d=var(1,2*3)+3.5*2;
+	return 0;
 }

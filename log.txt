@@ -1,0 +1,43 @@
+start : program
+program : unit
+unit : var_declaration
+var_declaration : int x, y;
+type_specifier : int
+declaration_list : x, y
+unit : var_declaration
+var_declaration : float z;
+type_specifier : float
+declaration_list : z
+unit : func_definition
+func_definition : int factorial(int n) { ... }
+unit : func_definition
+func_definition : void printArray(int arr[], int size) { ... }
+unit : func_definition
+func_definition : int main() { ... }
+statement : expression_statement
+expression_statement : a = 5;
+expression : variable ASSIGNOP logic_expression
+variable : a
+logic_expression : rel_expression
+rel_expression : simple_expression
+simple_expression : term
+term : unary_expression
+unary_expression : factor
+factor : 5
+statement : expression_statement
+expression_statement : b[0] = 10;
+statement : if_statement
+if_statement : if (x > 0) { z = c * 2.0; }
+statement : while_statement
+while_statement : while (a > 0) { a = a - 1; }
+Total lines: 22
+Total errors: 0
+Symbol Table:
+ScopeTable# 0
+factorial : ID FUNCTION INT()
+main : ID FUNCTION INT()
+printArray : ID FUNCTION VOID()
+x : ID
+y : ID
+z : ID
+
