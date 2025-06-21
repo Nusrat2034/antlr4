@@ -63,8 +63,8 @@ int main(int argc, char* argv[]) {
         logFile << "Parse tree: " << tree->toStringTree(&parser) << endl;
         
         cout << "Parsing completed successfully!" << endl;
-        cout << "Log file: 2105140_log.txt" << endl;
-        cout << "Error file: 2105140_error.txt" << endl;
+        cout << "Log file: log.txt" << endl;
+        cout << "Error file: error.txt" << endl;
         cout << "Total errors: " << errorCount << endl;
         
     } catch (const exception& e) {
