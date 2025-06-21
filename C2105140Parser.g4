@@ -5,111 +5,10 @@ options {
 }
 
 @header {
-#include <iostream>
+#include "SymbolTable.h"
 #include <fstream>
 #include <string>
-#include <vector>
-#include <map>
-#include <stack>
-#include <sstream>
 using namespace std;
-
-class SymbolInfo {
-public:
-    string name;
-    string type;
-    string varType;
-    string returnType;
-    vector<pair<string, string>> parameters;
-    int arraySize;
-    bool isArray;
-    bool isFunction;
-    bool isDefined;
-    bool isDeclared;
-    int lineNo;
-    
-    SymbolInfo() {
-        arraySize = -1;
-        isArray = false;
-        isFunction = false;
-        isDefined = false;
-        isDeclared = false;
-        lineNo = 0;
-    }
-    
-    SymbolInfo(string n, string t) {
-        name = n;
-        type = t;
-        arraySize = -1;
-        isArray = false;
-        isFunction = false;
-        isDefined = false;
-        isDeclared = false;
-        lineNo = 0;
-    }
-};
-
-class SymbolTable {
-public:
-    map<string, SymbolInfo*> currentScope;
-    vector<map<string, SymbolInfo*>> scopes;
-    
-    void enterScope() {
-        scopes.push_back(currentScope);
-        currentScope.clear();
-    }
-    
-    void exitScope() {
-        if (!scopes.empty()) {
-            currentScope = scopes.back();
-            scopes.pop_back();
-        }
-    }
-    
-    bool insert(SymbolInfo* symbol) {
-        if (currentScope.find(symbol->name) != currentScope.end()) {
-            return false;
-        }
-        currentScope[symbol->name] = symbol;
-        return true;
-    }
-    
-    SymbolInfo* lookup(string name) {
-        if (currentScope.find(name) != currentScope.end()) {
-            return currentScope[name];
-        }
-        for (int i = scopes.size() - 1; i >= 0; i--) {
-            if (scopes[i].find(name) != scopes[i].end()) {
-                return scopes[i][name];
-            }
-        }
-        return nullptr;
-    }
-    
-    void printScope() {
-        logFile << "ScopeTable# " << scopes.size() << endl;
-        for (auto& pair : currentScope) {
-            SymbolInfo* symbol = pair.second;
-            logFile << symbol->name << " : " << symbol->type;
-            if (symbol->isFunction) {
-                logFile << " FUNCTION";
-                if (!symbol->returnType.empty()) {
-                    logFile << " " << symbol->returnType;
-                }
-                logFile << "(";
-                for (size_t i = 0; i < symbol->parameters.size(); i++) {
-                    if (i > 0) logFile << ",";
-                    logFile << symbol->parameters[i].first;
-                }
-                logFile << ")";
-            } else if (symbol->isArray) {
-                logFile << " [" << symbol->arraySize << "]";
-            }
-            logFile << endl;
-        }
-        logFile << endl;
-    }
-};
 
 extern SymbolTable symbolTable;
 extern ofstream logFile;
@@ -121,47 +20,25 @@ extern bool insideFunction;
 }
 
 @members {
-SymbolTable symbolTable;
-ofstream logFile;
-ofstream errorFile;
-int lineCount = 1;
-int errorCount = 0;
 string currentReturnType = "";
 bool insideFunction = false;
 
-void logRule(string rule, string code) {
+void logRule(const string& rule, const string& code) {
     logFile << rule << " : " << code << endl;
 }
 
-void logError(int line, string message) {
+void logError(int line, const string& message) {
     errorFile << "Line no " << line << ": " << message << endl;
     errorCount++;
 }
 
-string typeConvert(string type1, string type2) {
-    if (type1 == "FLOAT" || type2 == "FLOAT") return "FLOAT";
-    if (type1 == "INT" || type2 == "INT") return "INT";
+string typeConvert(const string& type1, const string& type2) {
+    if (type1 == "FLOAT" || type2 == "FLOAT") {
+        return "FLOAT";
+    }
     return "INT";
 }
-
-void initializeFiles() {
-    logFile.open("log.txt");
-    errorFile.open("error.txt");
 }
-
-void closeFiles() {
-    logFile << "Total lines: " << lineCount << endl;
-    logFile << "Total errors: " << errorCount << endl;
-    symbolTable.printScope();
-    logFile.close();
-    errorFile.close();
-}
-}
-
-start : {initializeFiles();} program EOF {
-    logRule("start", "program");
-    closeFiles();
-};
 
 program : program unit {
     logRule("program", "program unit");
@@ -178,7 +55,8 @@ unit : var_declaration {
 };
 
 var_declaration : type_specifier declaration_list SEMICOLON {
-    logRule("var_declaration", $type_specifier.text + " " + $declaration_list.text + ";");
+    string code = $type_specifier.text + " " + $declaration_list.text + ";";
+    logRule("var_declaration", code);
 };
 
 type_specifier returns [string varType] : INT {
@@ -192,14 +70,15 @@ type_specifier returns [string varType] : INT {
     logRule("type_specifier", "void");
 };
 
-declaration_list : declaration_list COMMA ID {
+declaration_list returns [string text] : declaration_list COMMA ID {
     SymbolInfo* symbol = new SymbolInfo($ID.text, "ID");
     symbol->varType = "INT";
     symbol->lineNo = $ID.line;
     if (!symbolTable.insert(symbol)) {
         logError($ID.line, "Redefinition of variable '" + $ID.text + "'");
     }
-    logRule("declaration_list", $declaration_list.text + "," + $ID.text);
+    $text = $declaration_list.text + "," + $ID.text;
+    logRule("declaration_list", $text);
 } | declaration_list COMMA ID LSQUARE CONST_INT RSQUARE {
     SymbolInfo* symbol = new SymbolInfo($ID.text, "ID");
     symbol->varType = "INT";
@@ -209,7 +88,8 @@ declaration_list : declaration_list COMMA ID {
     if (!symbolTable.insert(symbol)) {
         logError($ID.line, "Redefinition of variable '" + $ID.text + "'");
     }
-    logRule("declaration_list", $declaration_list.text + "," + $ID.text + "[" + $CONST_INT.text + "]");
+    $text = $declaration_list.text + "," + $ID.text + "[" + $CONST_INT.text + "]";
+    logRule("declaration_list", $text);
 } | ID {
     SymbolInfo* symbol = new SymbolInfo($ID.text, "ID");
     symbol->varType = "INT";
@@ -217,7 +97,8 @@ declaration_list : declaration_list COMMA ID {
     if (!symbolTable.insert(symbol)) {
         logError($ID.line, "Redefinition of variable '" + $ID.text + "'");
     }
-    logRule("declaration_list", $ID.text);
+    $text = $ID.text;
+    logRule("declaration_list", $text);
 } | ID LSQUARE CONST_INT RSQUARE {
     SymbolInfo* symbol = new SymbolInfo($ID.text, "ID");
     symbol->varType = "INT";
@@ -227,7 +108,8 @@ declaration_list : declaration_list COMMA ID {
     if (!symbolTable.insert(symbol)) {
         logError($ID.line, "Redefinition of variable '" + $ID.text + "'");
     }
-    logRule("declaration_list", $ID.text + "[" + $CONST_INT.text + "]");
+    $text = $ID.text + "[" + $CONST_INT.text + "]";
+    logRule("declaration_list", $text);
 };
 
 func_declaration : type_specifier ID LPAREN parameter_list RPAREN SEMICOLON {
@@ -246,7 +128,8 @@ func_declaration : type_specifier ID LPAREN parameter_list RPAREN SEMICOLON {
             logError($ID.line, "Redefinition of function '" + $ID.text + "'");
         }
     }
-    logRule("func_declaration", $type_specifier.text + " " + $ID.text + "(" + $parameter_list.text + ");");
+    string code = $type_specifier.text + " " + $ID.text + "(" + $parameter_list.text + ");";
+    logRule("func_declaration", code);
 } | type_specifier ID LPAREN RPAREN SEMICOLON {
     SymbolInfo* symbol = new SymbolInfo($ID.text, "ID");
     symbol->isFunction = true;
@@ -256,7 +139,8 @@ func_declaration : type_specifier ID LPAREN parameter_list RPAREN SEMICOLON {
     if (!symbolTable.insert(symbol)) {
         logError($ID.line, "Redefinition of function '" + $ID.text + "'");
     }
-    logRule("func_declaration", $type_specifier.text + " " + $ID.text + "();");
+    string code = $type_specifier.text + " " + $ID.text + "();";
+    logRule("func_declaration", code);
 };
 
 func_definition : type_specifier ID LPAREN parameter_list RPAREN {
@@ -281,11 +165,12 @@ func_definition : type_specifier ID LPAREN parameter_list RPAREN {
     insideFunction = true;
     symbolTable.enterScope();
 } compound_statement {
-    symbolTable.printScope();
+    symbolTable.printScope(logFile);
     symbolTable.exitScope();
     insideFunction = false;
     currentReturnType = "";
-    logRule("func_definition", $type_specifier.text + " " + $ID.text + "(" + $parameter_list.text + ") " + $compound_statement.text);
+    string code = $type_specifier.text + " " + $ID.text + "(" + $parameter_list.text + ") " + $compound_statement.text;
+    logRule("func_definition", code);
 } | type_specifier ID LPAREN RPAREN {
     SymbolInfo* symbol = symbolTable.lookup($ID.text);
     if (!symbol) {
@@ -305,86 +190,106 @@ func_definition : type_specifier ID LPAREN parameter_list RPAREN {
     insideFunction = true;
     symbolTable.enterScope();
 } compound_statement {
-    symbolTable.printScope();
+    symbolTable.printScope(logFile);
     symbolTable.exitScope();
     insideFunction = false;
     currentReturnType = "";
-    logRule("func_definition", $type_specifier.text + " " + $ID.text + "() " + $compound_statement.text);
+    string code = $type_specifier.text + " " + $ID.text + "() " + $compound_statement.text;
+    logRule("func_definition", code);
 };
 
-parameter_list : parameter_list COMMA type_specifier ID {
+parameter_list returns [string text] : parameter_list COMMA type_specifier ID {
     SymbolInfo* symbol = new SymbolInfo($ID.text, "ID");
     symbol->varType = $type_specifier.varType;
     symbolTable.insert(symbol);
-    logRule("parameter_list", $parameter_list.text + "," + $type_specifier.text + " " + $ID.text);
+    $text = $parameter_list.text + "," + $type_specifier.text + " " + $ID.text;
+    logRule("parameter_list", $text);
 } | parameter_list COMMA type_specifier ID LSQUARE RSQUARE {
     SymbolInfo* symbol = new SymbolInfo($ID.text, "ID");
     symbol->varType = $type_specifier.varType;
     symbol->isArray = true;
     symbolTable.insert(symbol);
-    logRule("parameter_list", $parameter_list.text + "," + $type_specifier.text + " " + $ID.text + "[]");
+    $text = $parameter_list.text + "," + $type_specifier.text + " " + $ID.text + "[]";
+    logRule("parameter_list", $text);
 } | type_specifier ID {
     SymbolInfo* symbol = new SymbolInfo($ID.text, "ID");
     symbol->varType = $type_specifier.varType;
     symbolTable.insert(symbol);
-    logRule("parameter_list", $type_specifier.text + " " + $ID.text);
+    $text = $type_specifier.text + " " + $ID.text;
+    logRule("parameter_list", $text);
 } | type_specifier ID LSQUARE RSQUARE {
     SymbolInfo* symbol = new SymbolInfo($ID.text, "ID");
     symbol->varType = $type_specifier.varType;
     symbol->isArray = true;
     symbolTable.insert(symbol);
-    logRule("parameter_list", $type_specifier.text + " " + $ID.text + "[]");
+    $text = $type_specifier.text + " " + $ID.text + "[]";
+    logRule("parameter_list", $text);
 };
 
-compound_statement : LCURL {
+compound_statement returns [string text] : LCURL {
     symbolTable.enterScope();
 } statements RCURL {
-    symbolTable.printScope();
+    symbolTable.printScope(logFile);
     symbolTable.exitScope();
-    logRule("compound_statement", "{" + $statements.text + "}");
+    $text = "{" + $statements.text + "}";
+    logRule("compound_statement", $text);
 } | LCURL RCURL {
-    logRule("compound_statement", "{}");
+    $text = "{}";
+    logRule("compound_statement", $text);
 };
 
-statements : statements statement {
-    logRule("statements", $statements.text + " " + $statement.text);
+statements returns [string text] : statements statement {
+    $text = $statements.text + " " + $statement.text;
+    logRule("statements", $text);
 } | statement {
-    logRule("statements", $statement.text);
+    $text = $statement.text;
+    logRule("statements", $text);
 };
 
-statement : var_declaration {
-    logRule("statement", $var_declaration.text);
+statement returns [string text] : var_declaration {
+    $text = $var_declaration.text;
+    logRule("statement", $text);
 } | expression_statement {
-    logRule("statement", $expression_statement.text);
+    $text = $expression_statement.text;
+    logRule("statement", $text);
 } | compound_statement {
-    logRule("statement", $compound_statement.text);
-} | FOR LPAREN expression_statement expression_statement expression RPAREN statement {
-    logRule("statement", "for(" + $expression_statement.text + $expression_statement.text + $expression.text + ")" + $statement.text);
-} | IF LPAREN expression RPAREN statement %prec LOWER_THAN_ELSE {
-    logRule("statement", "if(" + $expression.text + ")" + $statement.text);
-} | IF LPAREN expression RPAREN statement ELSE statement {
-    logRule("statement", "if(" + $expression.text + ")" + $statement.text + "else" + $statement.text);
+    $text = $compound_statement.text;
+    logRule("statement", $text);
+} | FOR LPAREN expression_statement1=expression_statement expression_statement2=expression_statement expression RPAREN statement {
+    $text = "for(" + $expression_statement1.text + $expression_statement2.text + $expression.text + ")" + $statement.text;
+    logRule("statement", $text);
+} | IF LPAREN expression RPAREN statement1=statement ELSE statement2=statement {
+    $text = "if(" + $expression.text + ")" + $statement1.text + "else" + $statement2.text;
+    logRule("statement", $text);
+} | IF LPAREN expression RPAREN statement {
+    $text = "if(" + $expression.text + ")" + $statement.text;
+    logRule("statement", $text);
 } | WHILE LPAREN expression RPAREN statement {
-    logRule("statement", "while(" + $expression.text + ")" + $statement.text);
+    $text = "while(" + $expression.text + ")" + $statement.text;
+    logRule("statement", $text);
 } | RETURN expression SEMICOLON {
     if (!insideFunction) {
         logError($RETURN.line, "Return statement outside function");
     }
-    logRule("statement", "return " + $expression.text + ";");
+    $text = "return " + $expression.text + ";";
+    logRule("statement", $text);
 } | RETURN SEMICOLON {
     if (!insideFunction) {
         logError($RETURN.line, "Return statement outside function");
     }
-    logRule("statement", "return;");
+    $text = "return;";
+    logRule("statement", $text);
 };
 
-expression_statement : SEMICOLON {
-    logRule("expression_statement", ";");
+expression_statement returns [string text] : SEMICOLON {
+    $text = ";";
+    logRule("expression_statement", $text);
 } | expression SEMICOLON {
-    logRule("expression_statement", $expression.text + ";");
+    $text = $expression.text + ";";
+    logRule("expression_statement", $text);
 };
 
-variable returns [string varType] : ID {
+variable returns [string varType, string text] : ID {
     SymbolInfo* symbol = symbolTable.lookup($ID.text);
     if (!symbol) {
         logError($ID.line, "Undeclared variable '" + $ID.text + "'");
@@ -395,7 +300,8 @@ variable returns [string varType] : ID {
         }
         $varType = symbol->varType;
     }
-    logRule("variable", $ID.text);
+    $text = $ID.text;
+    logRule("variable", $text);
 } | ID LSQUARE expression RSQUARE {
     SymbolInfo* symbol = symbolTable.lookup($ID.text);
     if (!symbol) {
@@ -410,12 +316,14 @@ variable returns [string varType] : ID {
     if ($expression.exprType != "INT") {
         logError($ID.line, "Array subscript is not an integer");
     }
-    logRule("variable", $ID.text + "[" + $expression.text + "]");
+    $text = $ID.text + "[" + $expression.text + "]";
+    logRule("variable", $text);
 };
 
-expression returns [string exprType] : logic_expression {
+expression returns [string exprType, string text] : logic_expression {
     $exprType = $logic_expression.exprType;
-    logRule("expression", $logic_expression.text);
+    $text = $logic_expression.text;
+    logRule("expression", $text);
 } | variable ASSIGNOP logic_expression {
     if ($variable.varType != $logic_expression.exprType) {
         if ($variable.varType == "INT" && $logic_expression.exprType == "FLOAT") {
@@ -423,58 +331,71 @@ expression returns [string exprType] : logic_expression {
         }
     }
     $exprType = $variable.varType;
-    logRule("expression", $variable.text + "=" + $logic_expression.text);
+    $text = $variable.text + "=" + $logic_expression.text;
+    logRule("expression", $text);
 };
 
-logic_expression returns [string exprType] : rel_expression {
+logic_expression returns [string exprType, string text] : rel_expression {
     $exprType = $rel_expression.exprType;
-    logRule("logic_expression", $rel_expression.text);
-} | rel_expression LOGICOP rel_expression {
+    $text = $rel_expression.text;
+    logRule("logic_expression", $text);
+} | rel_expression1=rel_expression LOGICOP rel_expression2=rel_expression {
     $exprType = "INT";
-    logRule("logic_expression", $rel_expression.text + $LOGICOP.text + $rel_expression.text);
+    $text = $rel_expression1.text + $LOGICOP.text + $rel_expression2.text;
+    logRule("logic_expression", $text);
 };
 
-rel_expression returns [string exprType] : simple_expression {
+rel_expression returns [string exprType, string text] : simple_expression {
     $exprType = $simple_expression.exprType;
-    logRule("rel_expression", $simple_expression.text);
-} | simple_expression RELOP simple_expression {
+    $text = $simple_expression.text;
+    logRule("rel_expression", $text);
+} | simple_expression1=simple_expression RELOP simple_expression2=simple_expression {
     $exprType = "INT";
-    logRule("rel_expression", $simple_expression.text + $RELOP.text + $simple_expression.text);
+    $text = $simple_expression1.text + $RELOP.text + $simple_expression2.text;
+    logRule("rel_expression", $text);
 };
 
-simple_expression returns [string exprType] : term {
+simple_expression returns [string exprType, string text] : term {
     $exprType = $term.exprType;
-    logRule("simple_expression", $term.text);
+    $text = $term.text;
+    logRule("simple_expression", $text);
 } | simple_expression ADDOP term {
     $exprType = typeConvert($simple_expression.exprType, $term.exprType);
-    logRule("simple_expression", $simple_expression.text + $ADDOP.text + $term.text);
+    $text = $simple_expression.text + $ADDOP.text + $term.text;
+    logRule("simple_expression", $text);
 };
 
-term returns [string exprType] : unary_expression {
+term returns [string exprType, string text] : unary_expression {
     $exprType = $unary_expression.exprType;
-    logRule("term", $unary_expression.text);
+    $text = $unary_expression.text;
+    logRule("term", $text);
 } | term MULOP unary_expression {
     if ($MULOP.text == "%" && ($term.exprType != "INT" || $unary_expression.exprType != "INT")) {
         logError($MULOP.line, "Operands of modulus must be integers");
     }
     $exprType = typeConvert($term.exprType, $unary_expression.exprType);
-    logRule("term", $term.text + $MULOP.text + $unary_expression.text);
+    $text = $term.text + $MULOP.text + $unary_expression.text;
+    logRule("term", $text);
 };
 
-unary_expression returns [string exprType] : ADDOP unary_expression {
+unary_expression returns [string exprType, string text] : ADDOP unary_expression {
     $exprType = $unary_expression.exprType;
-    logRule("unary_expression", $ADDOP.text + $unary_expression.text);
+    $text = $ADDOP.text + $unary_expression.text;
+    logRule("unary_expression", $text);
 } | NOT unary_expression {
     $exprType = "INT";
-    logRule("unary_expression", "!" + $unary_expression.text);
+    $text = "!" + $unary_expression.text;
+    logRule("unary_expression", $text);
 } | factor {
     $exprType = $factor.exprType;
-    logRule("unary_expression", $factor.text);
+    $text = $factor.text;
+    logRule("unary_expression", $text);
 };
 
-factor returns [string exprType] : variable {
+factor returns [string exprType, string text] : variable {
     $exprType = $variable.varType;
-    logRule("factor", $variable.text);
+    $text = $variable.text;
+    logRule("factor", $text);
 } | ID LPAREN argument_list RPAREN {
     SymbolInfo* symbol = symbolTable.lookup($ID.text);
     if (!symbol) {
@@ -488,29 +409,38 @@ factor returns [string exprType] : variable {
             $exprType = symbol->returnType;
         }
     }
-    logRule("factor", $ID.text + "(" + $argument_list.text + ")");
+    $text = $ID.text + "(" + $argument_list.text + ")";
+    logRule("factor", $text);
 } | LPAREN expression RPAREN {
     $exprType = $expression.exprType;
-    logRule("factor", "(" + $expression.text + ")");
+    $text = "(" + $expression.text + ")";
+    logRule("factor", $text);
 } | CONST_INT {
     $exprType = "INT";
-    logRule("factor", $CONST_INT.text);
+    $text = $CONST_INT.text;
+    logRule("factor", $text);
 } | CONST_FLOAT {
     $exprType = "FLOAT";
-    logRule("factor", $CONST_FLOAT.text);
+    $text = $CONST_FLOAT.text;
+    logRule("factor", $text);
 } | variable INCOP {
     $exprType = $variable.varType;
-    logRule("factor", $variable.text + $INCOP.text);
+    $text = $variable.text + $INCOP.text;
+    logRule("factor", $text);
 };
 
-argument_list : arguments {
-    logRule("argument_list", $arguments.text);
+argument_list returns [string text] : arguments {
+    $text = $arguments.text;
+    logRule("argument_list", $text);
 } | /* empty */ {
+    $text = "";
     logRule("argument_list", "");
 };
 
-arguments : arguments COMMA logic_expression {
-    logRule("arguments", $arguments.text + "," + $logic_expression.text);
+arguments returns [string text] : arguments COMMA logic_expression {
+    $text = $arguments.text + "," + $logic_expression.text;
+    logRule("arguments", $text);
 } | logic_expression {
-    logRule("arguments", $logic_expression.text);
+    $text = $logic_expression.text;
+    logRule("arguments", $text);
 };
