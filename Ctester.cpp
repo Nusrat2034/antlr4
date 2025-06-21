@@ -138,97 +138,6 @@ int countLines(const string& filename) {
     return lines;
 }
 
-// Simple parser simulation for demonstration
-void parseFile(const string& filename) {
-    ifstream file(filename);
-    string line;
-    int currentLine = 1;
-    
-    logFile << "start : program" << endl;
-    logFile << "program : unit" << endl;
-    
-    // Add some global variables to symbol table
-    SymbolInfo* x = new SymbolInfo("x", "ID");
-    x->varType = "INT";
-    x->lineNo = 1;
-    symbolTable.insert(x);
-    
-    SymbolInfo* y = new SymbolInfo("y", "ID");
-    y->varType = "INT";
-    y->lineNo = 1;
-    symbolTable.insert(y);
-    
-    SymbolInfo* z = new SymbolInfo("z", "ID");
-    z->varType = "FLOAT";
-    z->lineNo = 2;
-    symbolTable.insert(z);
-    
-    // Add functions to symbol table
-    SymbolInfo* factorial = new SymbolInfo("factorial", "ID");
-    factorial->isFunction = true;
-    factorial->returnType = "INT";
-    factorial->isDefined = true;
-    factorial->lineNo = 4;
-    symbolTable.insert(factorial);
-    
-    SymbolInfo* printArray = new SymbolInfo("printArray", "ID");
-    printArray->isFunction = true;
-    printArray->returnType = "VOID";
-    printArray->isDefined = true;
-    printArray->lineNo = 10;
-    symbolTable.insert(printArray);
-    
-    SymbolInfo* main = new SymbolInfo("main", "ID");
-    main->isFunction = true;
-    main->returnType = "INT";
-    main->isDefined = true;
-    main->lineNo = 16;
-    symbolTable.insert(main);
-    
-    // Log some parsing rules
-    logRule("unit", "var_declaration");
-    logRule("var_declaration", "int x, y;");
-    logRule("type_specifier", "int");
-    logRule("declaration_list", "x, y");
-    
-    logRule("unit", "var_declaration");
-    logRule("var_declaration", "float z;");
-    logRule("type_specifier", "float");
-    logRule("declaration_list", "z");
-    
-    logRule("unit", "func_definition");
-    logRule("func_definition", "int factorial(int n) { ... }");
-    
-    logRule("unit", "func_definition");
-    logRule("func_definition", "void printArray(int arr[], int size) { ... }");
-    
-    logRule("unit", "func_definition");
-    logRule("func_definition", "int main() { ... }");
-    
-    // Simulate some expressions and statements
-    logRule("statement", "expression_statement");
-    logRule("expression_statement", "a = 5;");
-    logRule("expression", "variable ASSIGNOP logic_expression");
-    logRule("variable", "a");
-    logRule("logic_expression", "rel_expression");
-    logRule("rel_expression", "simple_expression");
-    logRule("simple_expression", "term");
-    logRule("term", "unary_expression");
-    logRule("unary_expression", "factor");
-    logRule("factor", "5");
-    
-    logRule("statement", "expression_statement");
-    logRule("expression_statement", "b[0] = 10;");
-    
-    logRule("statement", "if_statement");
-    logRule("if_statement", "if (x > 0) { z = c * 2.0; }");
-    
-    logRule("statement", "while_statement");
-    logRule("while_statement", "while (a > 0) { a = a - 1; }");
-    
-    file.close();
-}
-
 int main(int argc, char* argv[]) {
     if (argc != 2) {
         cerr << "Usage: " << argv[0] << " <input_file>" << endl;
@@ -253,10 +162,7 @@ int main(int argc, char* argv[]) {
         cerr << "Error: Cannot create output files" << endl;
         return 1;
     }
-    
-    // Parse the file
-    parseFile(inputFile);
-    
+
     // Count lines and finalize output
     lineCount = countLines(inputFile);
     
