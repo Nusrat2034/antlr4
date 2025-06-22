@@ -1,76 +1,28 @@
 #!/bin/bash
-set -e
 
-# === CONFIG ===
-ANTLR_JAR=~/antlr-4.13.2-complete.jar
-INCLUDE_DIR=/usr/local/include/antlr4-runtime
-SRC_FILES=("C2105140Lexer.cpp" "C2105140Parser.cpp" \
-           "C2105140ParserListener.cpp" "C2105140ParserBaseListener.cpp" \
-           "C2105140ParserVisitor.cpp" "C2105140ParserBaseVisitor.cpp" \
-           "C2105140Lexer.h" "C2105140Parser.h" \
-           "C2105140ParserListener.h" "C2105140ParserBaseListener.h" \
-           "C2105140ParserVisitor.cpp" "C2105140ParserBaseVisitor.cpp")
+# Remove previously generated files
+rm -f C2105140Lexer.cpp C2105140Parser.cpp \
+      C2105140ParserListener.cpp C2105140ParserBaseListener.cpp \
+      C2105140ParserVisitor.cpp C2105140ParserBaseVisitor.cpp \
+      C2105140Lexer.h C2105140Parser.h \
+      C2105140ParserListener.h C2105140ParserBaseListener.h \
+      C2105140ParserVisitor.h C2105140ParserBaseVisitor.h \
+      C2105140Lexer.o C2105140Parser.o Ctester.o Ctester.out \
+      C2105140Lexer.interp C2105140Parser.interp\
+      C2105140Lexer.tokens C2105140Parser.tokens
 
-# === CLEAN ALL SOURCE FILES EXCEPT EXCEPTIONS ===
-echo "🧹 Cleaning source files (except Ctester.cpp and SymbolTable.h)..."
-shopt -s extglob
+# # Generate lexer and parser from ANTLR4 grammar
+# antlr4 -Dlanguage=Cpp C2105140Lexer.g4
+# antlr4 -Dlanguage=Cpp C2105140Parser.g4
 
-# Remove .cpp files except Ctester.cpp
-rm -f !("Ctester.cpp")*.cpp
+# # Compile generated lexer and parser
+# g++ -std=c++17 -w -I/usr/local/include/antlr4-runtime -c C2105140Lexer.cpp C2105140Parser.cpp
 
-# Remove .h files except SymbolTable.h
-rm -f !("SymbolTable.h")*.h
+# # Compile your test file
+# g++ -std=c++17 -w -I/usr/local/include/antlr4-runtime -c Ctester.cpp
 
-# Remove other build artifacts
-rm -f *.o *.tokens *.interp test
+# # Link all object files
+# g++ -std=c++17 -w C2105140Lexer.o C2105140Parser.o Ctester.o -L/usr/local/lib -lantlr4-runtime -o Ctester.out -pthread
 
-shopt -u extglob  # Reset shell option
-
-# === GENERATE ===
-echo "⚙️ Generating lexer and parser with -listener and -visitor..."
-java -jar "$ANTLR_JAR" -Dlanguage=Cpp -listener -visitor C2105140Lexer.g4
-java -jar "$ANTLR_JAR" -Dlanguage=Cpp -listener -visitor C2105140Parser.g4
-
-# === LIST GENERATED FILES ===
-echo "📄 Generated files:"
-ls -1 C2105140*.{h,cpp} 2>/dev/null || echo "⚠️ No parser/lexer files found!"
-
-# === COMPILE ===
-echo "🛠️ Compiling generated and custom source files..."
-for file in "${SRC_FILES[@]}"; do
-    if [ -f "$file" ]; then
-        echo "✔️ Compiling $file"
-        g++ -std=c++17 -I"$INCLUDE_DIR" -c "$file"
-    else
-        echo "⏭️  Skipping missing file: $file"
-    fi
-done
-
-if [ ! -f Ctester.cpp ]; then
-    echo "❌ Error: Ctester.cpp not found!"
-    exit 1
-fi
-
-echo "✔️ Compiling Ctester.cpp"
-g++ -std=c++17 -I"$INCLUDE_DIR" -c Ctester.cpp
-
-# === LINK ===
-echo "🔗 Linking all object files..."
-g++ -std=c++17 -I"$INCLUDE_DIR" *.o -lantlr4-runtime -o test
-
-# === RUN ===
-if [ $# -eq 0 ]; then
-    echo "ℹ️ Usage: ./run.sh input.c"
-    echo "❗ No input file provided, exiting."
-    exit 1
-fi
-
-if [ ! -f "$1" ]; then
-    echo "❌ Error: Input file '$1' not found."
-    exit 1
-fi
-
-echo "🚀 Running test on '$1'..."
-./test "$1"
-
-echo "✅ Finished. Check log.txt and error.txt for output."
+# # Run the parser
+# LD_LIBRARY_PATH=/usr/local/lib ./Ctester.out "$1"
