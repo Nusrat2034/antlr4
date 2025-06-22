@@ -6,12 +6,25 @@ ANTLR_JAR=~/antlr-4.13.2-complete.jar
 INCLUDE_DIR=/usr/local/include/antlr4-runtime
 SRC_FILES=("C2105140Lexer.cpp" "C2105140Parser.cpp" \
            "C2105140ParserListener.cpp" "C2105140ParserBaseListener.cpp" \
+           "C2105140ParserVisitor.cpp" "C2105140ParserBaseVisitor.cpp" \
+           "C2105140Lexer.h" "C2105140Parser.h" \
+           "C2105140ParserListener.h" "C2105140ParserBaseListener.h" \
            "C2105140ParserVisitor.cpp" "C2105140ParserBaseVisitor.cpp")
 
-# === CLEAN ===
-echo "🔄 Cleaning old build artifacts..."
-rm -f C2105140Lexer.cpp C2105140Parser.cpp C2105140Lexer.h C2105140Parser.h *.o *.tokens *.interp test
+# === CLEAN ALL SOURCE FILES EXCEPT EXCEPTIONS ===
+echo "🧹 Cleaning source files (except Ctester.cpp and SymbolTable.h)..."
+shopt -s extglob
 
+# Remove .cpp files except Ctester.cpp
+rm -f !("Ctester.cpp")*.cpp
+
+# Remove .h files except SymbolTable.h
+rm -f !("SymbolTable.h")*.h
+
+# Remove other build artifacts
+rm -f *.o *.tokens *.interp test
+
+shopt -u extglob  # Reset shell option
 
 # === GENERATE ===
 echo "⚙️ Generating lexer and parser with -listener and -visitor..."
