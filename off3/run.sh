@@ -12,17 +12,17 @@ rm -f C2105140Lexer.cpp C2105140Parser.cpp \
       C2105140Lexer.tokens C2105140Parser.tokens
 
 # # Generate lexer and parser from ANTLR4 grammar
-# antlr4 -Dlanguage=Cpp C2105140Lexer.g4
-# antlr4 -Dlanguage=Cpp C2105140Parser.g4
+ antlr4 -Dlanguage=Cpp C2105140Lexer.g4
+ antlr4 -Dlanguage=Cpp C2105140Parser.g4
 
 # # Compile generated lexer and parser
-# g++ -std=c++17 -w -I/usr/local/include/antlr4-runtime -c C2105140Lexer.cpp C2105140Parser.cpp
+ g++ -std=c++17 -w -I/usr/local/include/antlr4-runtime -c C2105140Lexer.cpp C2105140Parser.cpp
 
 # # Compile your test file
-# g++ -std=c++17 -w -I/usr/local/include/antlr4-runtime -c Ctester.cpp
+ g++ -std=c++17 -w -I/usr/local/include/antlr4-runtime -c Ctester.cpp
 
 # # Link all object files
-# g++ -std=c++17 -w C2105140Lexer.o C2105140Parser.o Ctester.o -L/usr/local/lib -lantlr4-runtime -o Ctester.out -pthread
+ g++ -std=c++17 -w C2105140Lexer.o C2105140Parser.o Ctester.o -L/usr/local/lib -lantlr4-runtime -o Ctester.out -pthread
 
 # # Run the parser
-# LD_LIBRARY_PATH=/usr/local/lib ./Ctester.out "$1"
+ LD_LIBRARY_PATH=/usr/local/lib ./Ctester.out "$1"
